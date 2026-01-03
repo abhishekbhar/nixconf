@@ -8,6 +8,7 @@
     ./shell.nix
     ./starship.nix
     ./yazi.nix
+    ./opencode.nix
   ];
 
   home.packages = with pkgs; [
