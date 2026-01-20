@@ -18,49 +18,86 @@
   };
 
   outputs = {
-	self,
-	nixpkgs,
-	latestpkgs,
-	nixpkgs-stable,
-	home-manager,
-	nixos-wsl,
-	...
-  } @ inputs : let 
-	inherit (self) outputs;
-	system = "x86_64-linux";
-	vars = import ./vars.nix;
-	pkgs-stable = nixpkgs-stable.lagacyPackages.${system};
-	pkgs-latest = import latestpkgs {
-	  inherit system;
-	  config.allowUnfree = true;
-	};
-	in {
-	  homeConfigurations = {
-		${vars.os_user} = home-manager.lib.homeManagerConfiguration {
-		  pkgs = nixpkgs.legacyPackages.${system};
-		  extraSpecialArgs = {
-			inherit inputs outputs system vars pkgs-stable pkgs-latest;
-		  };
-		  modules = [./home];
-		};
-	  };
+    self,
+    nixpkgs,
+    latestpkgs,
+    nixpkgs-stable,
+    home-manager,
+    nixos-wsl,
+    ...
+  } @ inputs:
+  let
+    inherit (self) outputs;
 
-	  nixosConfigurations.${vars.system_name} = nixpkgs.lib.nixosSystem {
-		inherit system;
-		specialArgs = { inherit vars; };
-		modules = [
-		  # Enable WSL support
-		  nixos-wsl.nixosModules.wsl
+    # Define the systems we target
+    systems = {
+      wsl = "x86_64-linux";
+      mac = "aarch64-darwin";
+    };
 
-		  # Main system config
-		  ./os/configuration.nix
+    vars = import ./vars.nix;
 
-		  # Enable flakes, unfree, and Home Manager integrations
-		  {
-			nix.settings.experimental-features = [ "nix-command" "flakes" ];
-			nixpkgs.config.allowUnfree = true;
-		  }
-		];
-	  };
-	};
+    # Per-system package sets
+    pkgs-stable-wsl = nixpkgs-stable.legacyPackages.${systems.wsl};
+    pkgs-latest-wsl = import latestpkgs {
+      system = systems.wsl;
+      config.allowUnfree = true;
+    };
+
+    pkgs-stable-mac = nixpkgs-stable.legacyPackages.${systems.mac};
+    pkgs-latest-mac = import latestpkgs {
+      system = systems.mac;
+      config.allowUnfree = true;
+    };
+  in
+  {
+    homeConfigurations = {
+      # Existing WSL / Linux Home Manager configuration (kept intact)
+      ${vars.os_user} = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.${systems.wsl};
+        extraSpecialArgs = {
+          inputs = inputs;
+          outputs = outputs;
+          system = systems.wsl;
+          vars = vars;
+          pkgs-stable = pkgs-stable-wsl;
+          pkgs-latest = pkgs-latest-wsl;
+        };
+        modules = [ ./home ];
+      };
+
+      # New macOS Home Manager configuration for this MacBook
+      "${vars.os_user}-mac" = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.${systems.mac};
+        extraSpecialArgs = {
+          inputs = inputs;
+          outputs = outputs;
+          system = systems.mac;
+          vars = vars;
+          pkgs-stable = pkgs-stable-mac;
+          pkgs-latest = pkgs-latest-mac;
+        };
+        modules = [ ./home ];
+      };
+    };
+
+    # NixOS WSL system configuration (Linux-only, unchanged in behaviour)
+    nixosConfigurations.${vars.system_name} = nixpkgs.lib.nixosSystem {
+      system = systems.wsl;
+      specialArgs = { inherit vars; };
+      modules = [
+        # Enable WSL support
+        nixos-wsl.nixosModules.wsl
+
+        # Main system config
+        ./os/configuration.nix
+
+        # Enable flakes, unfree, and Home Manager integrations
+        {
+          nix.settings.experimental-features = [ "nix-command" "flakes" ];
+          nixpkgs.config.allowUnfree = true;
+        }
+      ];
+    };
+  };
 }

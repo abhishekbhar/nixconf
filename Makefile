@@ -7,7 +7,13 @@ nixos:
 	sudo nixos-rebuild switch --flake .#$(SYSTEM_NAME) && home-manager switch --flake .#$(USER_NAME) -b backup
 
 hm:
-	home-manager switch --flake .#$(USER_NAME) -b backup
+	@if [ "$$(uname -s)" = "Darwin" ]; then \
+		echo "Detected macOS – using Home Manager config $(USER_NAME)-mac"; \
+		home-manager switch --flake .#$(USER_NAME)-mac -b backup; \
+	else \
+		echo "Detected Linux/WSL – using Home Manager config $(USER_NAME)"; \
+		home-manager switch --flake .#$(USER_NAME) -b backup; \
+	fi
 
 
 # Additional helpful targets
