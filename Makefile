@@ -1,24 +1,34 @@
-# VAriables - Update these to match your vars.nix settings
-SYSTEM_NAME ?= nixos
-USER_NAME ?= abhishekbhar
+# Simplified Makefile for multi-platform Nix configurations
 
-# Main targets
-nixos:
-	sudo nixos-rebuild switch --flake .#$(SYSTEM_NAME) && home-manager switch --flake .#$(USER_NAME) -b backup
+# Main targets for complete system builds
+wsl:
+	sudo nixos-rebuild switch --flake .#wsl
 
-hm:
-	home-manager switch --flake .#$(USER_NAME) -b backup
+home:
+	home-manager switch --flake .#home -b backup
 
-
-# Additional helpful targets
 update:
 	nix flake update
 
 gc:
-	sudo nix-collect-garbage -d
+	sudo nix-collect-garbage -d || true
+	nix-collect-garbage -d
 
 check:
 	nix flake check
 
 clean:
 	rm -rf result
+
+# Show available targets
+help:
+	@echo "Available targets:"
+	@echo "  wsl    - Build complete WSL system (NixOS + Home Manager)"
+	@echo "  mac    - Build complete macOS system (nix-darwin + Home Manager)"
+	@echo "  home   - Build Home Manager only (auto-detects system)"
+	@echo "  update - Update flake inputs"
+	@echo "  gc     - Run garbage collection"
+	@echo "  check  - Check flake configuration"
+	@echo "  clean  - Remove build artifacts"
+
+.PHONY: wsl mac home hm update gc check clean help

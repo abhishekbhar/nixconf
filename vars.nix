@@ -7,5 +7,7 @@
   # User information
   vcs_user = "Abhishek Bhardwaj";
   vcs_email = "volage.abhishek@gmail.com";
+
+  ssl_cert_path = "/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt";
  
 }
