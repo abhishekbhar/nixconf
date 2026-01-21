@@ -1,4 +1,4 @@
-{ pkgs, pkgs-latest, ... }: {
+{ pkgs, pkgs-latest, vars, ... }: {
   imports = [
     ./bat.nix
     ./direnv.nix

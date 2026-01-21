@@ -24,4 +24,14 @@
       safe.directory = "*";
     };
   };
+
+  # SSH configuration for git operations
+  programs.ssh.matchBlocks."github.com" = {
+    hostname = "github.com";
+    identityFile = vars.git_ssh_identity_file;
+    addKeysToAgent = "yes";
+    extraOptions = {
+      UseKeychain = "yes";
+    };
+  };
 }
