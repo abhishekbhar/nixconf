@@ -13,10 +13,11 @@
     enable = true;
     lfs.enable = true;
 
-    userName = vars.vcs_user;
-    userEmail = vars.vcs_email;
-
-    extraConfig = {
+    settings = {
+      user = {
+        name = vars.vcs_user;
+        email = vars.vcs_email;
+      };
       init.defaultBranch = "main";
       push.autoSetupRemote = true;
       pull.rebase = true;
