@@ -21,7 +21,7 @@
       tab_bar_style = "powerline";
       #tab_bar_style = "fade";
       enabled_layouts = "splits";
-      hide_window_decorations = "yes";
+      hide_window_decorations = "no";
       background_opacity = 0.85;
     };
     extraConfig = ''
