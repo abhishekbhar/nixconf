@@ -11,8 +11,8 @@ update:
 	nix flake update
 
 gc:
-	sudo nix-collect-garbage -d || true
-	nix-collect-garbage -d
+	nix-collect-garbage --delete-older-than 7d || true
+	sudo nix-collect-garbage --delete-older-than 7d || true
 
 check:
 	nix flake check

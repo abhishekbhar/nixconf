@@ -6,6 +6,6 @@
   # Optionally, Configure settings (like theme or model)
   programs.opencode.settings = {
     theme = "opencode";
-    plugin = [ "opencode-antigravity-auth@latest" ];
+    plugin = [ ];
   };
 }
