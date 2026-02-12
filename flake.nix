@@ -1,103 +1,79 @@
 {
-  description = "My NixOs + Home Manager (WSL) config";
-  
+  description = "My NixOS + Home Manager + nix-darwin config";
+
   inputs = {
-  	nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-  	latestpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-  	nixpkgs-stable.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    mostlatestpkgs.url = "github:nixos/nixpkgs/master";
+    latestpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-	home-manager = {
-	  url = "github:nix-community/home-manager";
-	  inputs.nixpkgs.follows = "nixpkgs";
-	};
-
-	nixos-wsl = {
-	  url = "github:nix-community/NixOS-WSL";
-	  inputs.nixpkgs.follows = "nixpkgs";
-	};
-  };
-
-  outputs = {
-    self,
-    nixpkgs,
-    latestpkgs,
-    nixpkgs-stable,
-    home-manager,
-    nixos-wsl,
-    ...
-  } @ inputs:
-  let
-    inherit (self) outputs;
-
-    # Define the systems we target
-    systems = {
-      wsl = "x86_64-linux";
-      mac = "aarch64-darwin";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    vars = import ./vars.nix;
-
-    # Per-system package sets
-    pkgs-stable-wsl = nixpkgs-stable.legacyPackages.${systems.wsl};
-    pkgs-latest-wsl = import latestpkgs {
-      system = systems.wsl;
-      config.allowUnfree = true;
-    };
-
-    pkgs-stable-mac = nixpkgs-stable.legacyPackages.${systems.mac};
-    pkgs-latest-mac = import latestpkgs {
-      system = systems.mac;
-      config.allowUnfree = true;
-    };
-  in
-  {
-    homeConfigurations = {
-      # Existing WSL / Linux Home Manager configuration (kept intact)
-      ${vars.os_user} = home-manager.lib.homeManagerConfiguration {
-        pkgs = nixpkgs.legacyPackages.${systems.wsl};
-        extraSpecialArgs = {
-          inputs = inputs;
-          outputs = outputs;
-          system = systems.wsl;
-          vars = vars;
-          pkgs-stable = pkgs-stable-wsl;
-          pkgs-latest = pkgs-latest-wsl;
-        };
-        modules = [ ./home ];
-      };
-
-      # New macOS Home Manager configuration for this MacBook
-      "${vars.os_user}-mac" = home-manager.lib.homeManagerConfiguration {
-        pkgs = nixpkgs.legacyPackages.${systems.mac};
-        extraSpecialArgs = {
-          inputs = inputs;
-          outputs = outputs;
-          system = systems.mac;
-          vars = vars;
-          pkgs-stable = pkgs-stable-mac;
-          pkgs-latest = pkgs-latest-mac;
-        };
-        modules = [ ./home ];
-      };
-    };
-
-    # NixOS WSL system configuration (Linux-only, unchanged in behaviour)
-    nixosConfigurations.${vars.system_name} = nixpkgs.lib.nixosSystem {
-      system = systems.wsl;
-      specialArgs = { inherit vars; };
-      modules = [
-        # Enable WSL support
-        nixos-wsl.nixosModules.wsl
-
-        # Main system config
-        ./os/configuration.nix
-
-        # Enable flakes, unfree, and Home Manager integrations
-        {
-          nix.settings.experimental-features = [ "nix-command" "flakes" ];
-          nixpkgs.config.allowUnfree = true;
-        }
-      ];
+    nixos-wsl = {
+      url = "github:nix-community/NixOS-WSL";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
+
+  outputs =
+    inputs:
+    let
+      inherit (inputs.nixpkgs) lib;
+      vars = import ./vars.nix;
+
+      # Detect current system
+      currentSystem =
+        if inputs.nixpkgs.legacyPackages.aarch64-darwin.stdenv.isDarwin or false then
+          "aarch64-darwin"
+        else
+          "x86_64-linux";
+
+      # Helper to create specialArgs for each profile
+      mkSpecialArgs = system: inputs // { inherit inputs vars system; };
+
+      # Helper to create base modules
+      mkBaseModules =
+        modules:
+        modules
+        ++ [
+          {
+            nix.settings.experimental-features = [
+              "nix-command"
+              "flakes"
+            ];
+            nixpkgs.config.allowUnfree = true;
+          }
+        ];
+    in
+    {
+      # WSL NixOS configuration
+      nixosConfigurations.wsl = lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = mkSpecialArgs "x86_64-linux";
+        modules = mkBaseModules [
+          inputs.nixos-wsl.nixosModules.wsl
+          ./wsl/configuration.nix
+        ];
+      };
+
+      # Home Manager configuration
+      homeConfigurations.home = inputs.home-manager.lib.homeManagerConfiguration {
+        pkgs = inputs.nixpkgs.legacyPackages.${currentSystem};
+        extraSpecialArgs = mkSpecialArgs currentSystem // {
+          latestpkgs = import inputs.latestpkgs {
+            system = currentSystem;
+            config.allowUnfree = true;
+          };
+          mostlatestpkgs = import inputs.mostlatestpkgs {
+            system = currentSystem;
+            config.allowUnfree = true;
+          };
+        };
+        modules = [
+          ./home
+        ];
+      };
+    };
 }

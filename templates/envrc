@@ -1,0 +1,18 @@
+# Template .envrc for Nix flake projects
+# Copy this file to your project root as .envrc and run: direnv allow
+
+# Basic flake loading - uses the default devShell
+use flake
+
+# Alternative: Load a specific devShell output
+# use flake .#myDevShell
+
+# Alternative: Watch additional files for changes (triggers rebuild)
+# watch_file flake.lock
+# watch_file shell.nix
+
+# Optional: Set additional environment variables
+# export MY_VAR="value"
+
+# Optional: Add local bin directory to PATH
+# PATH_add bin
