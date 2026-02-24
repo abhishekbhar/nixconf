@@ -5,5 +5,6 @@ _: {
     ../base/gui
     ./config.nix
     ./tui
+    ./trillium.nix
   ];
 }

@@ -1,8 +1,8 @@
 {
   # os user and system name below are default for nix wsl install
-  # If changing these remember to follow readme steps to rebuild 
+  # If changing these remember to follow readme steps to rebuild
   os_user = "abhishekbhar";
-  system_name= "nixos";
+  system_name = "nixos";
 
   # User information
   vcs_user = "Abhishek Bhardwaj";
@@ -12,5 +12,8 @@
 
   # SSH identity files
   git_ssh_identity_file = "~/.ssh/id_github";
- 
+
+  # Trillium API
+  trilium_api_url = "http://trilium.abhibhr.in/etapi";
+  trilium_etapi_token = "";
 }
