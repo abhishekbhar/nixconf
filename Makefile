@@ -1,5 +1,7 @@
 # Simplified Makefile for multi-platform Nix configurations
 
+USER_NAME := abhishekbhar
+
 # Main targets for complete system builds
 wsl:
 	sudo nixos-rebuild switch --flake .#wsl
@@ -7,10 +9,10 @@ wsl:
 home:
 	@if [ "$$(uname -s)" = "Darwin" ]; then \
 		echo "Detected macOS – using Home Manager config for mac"; \
-		home-manager switch --flake .#home -b backup
+		home-manager switch --flake .#home -b backup; \
 	else \
-		echo "Detected Linux/WSL – using Home Manager config $(USER_NAME)"; \
-		home-manager switch --flake .#$(USER_NAME) -b backup; \
+		echo "Detected Linux/WSL – using Home Manager config"; \
+		home-manager switch --flake .#home -b backup; \
 	fi
 
 update:
@@ -30,11 +32,10 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  wsl    - Build complete WSL system (NixOS + Home Manager)"
-	@echo "  mac    - Build complete macOS system (nix-darwin + Home Manager)"
 	@echo "  home   - Build Home Manager only (auto-detects system)"
 	@echo "  update - Update flake inputs"
 	@echo "  gc     - Run garbage collection"
 	@echo "  check  - Check flake configuration"
 	@echo "  clean  - Remove build artifacts"
 
-.PHONY: wsl mac home hm update gc check clean help
+.PHONY: wsl home update gc check clean help

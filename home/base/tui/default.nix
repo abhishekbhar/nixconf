@@ -1,4 +1,10 @@
-{ pkgs, pkgs-latest, vars, ... }: {
+{
+  pkgs,
+  pkgs-latest,
+  vars,
+  ...
+}:
+{
   imports = [
     ./bat.nix
     ./direnv.nix
@@ -10,31 +16,37 @@
     ./yazi.nix
     ./opencode.nix
     ./kitty.nix
+    ./ttyd.nix
   ];
 
-  home.packages = with pkgs; [
-    fd
-    btop
-    gnumake
-    git-crypt
-    tldr
-    unzip
-    ripgrep
-    nil
-    nixd
-    nixfmt-rfc-style
-    glow
-    nerd-fonts.fira-code
-    gcc
-    gdu
-    zellij
-    gomatrix
-    awscli2
-    duf
-    devenv
-  ] ++ ( with pkgs-latest; []);
+  home.packages =
+    with pkgs;
+    [
+      fd
+      btop
+      gnumake
+      git-crypt
+      tldr
+      unzip
+      ripgrep
+      nil
+      nixd
+      nixfmt-rfc-style
+      glow
+      nerd-fonts.fira-code
+      gcc
+      gdu
+      zellij
+      gomatrix
+      awscli2
+      duf
+      devenv
+    ]
+    ++ (with pkgs-latest; [ ]);
 
-  fonts = { fontconfig.enable = true; };
+  fonts = {
+    fontconfig.enable = true;
+  };
 
   programs = {
     fzf = {
@@ -49,12 +61,12 @@
         "info" = "#cba6f7";
         "pointer" = "#f5e0dc";
         "marker" = "#f5e0dc";
-	"fg+" = "#cdd6f4";
-	"prompt" = "#cba6f7";
-	"hl+" = "#f38ba8";
+        "fg+" = "#cdd6f4";
+        "prompt" = "#cba6f7";
+        "hl+" = "#f38ba8";
       };
     };
-   
+
     zoxide = {
       enable = true;
       enableBashIntegration = true;
@@ -71,7 +83,7 @@
         style = "full";
       };
     };
-   
+
     carapace = {
       enable = true;
       enableBashIntegration = true;
@@ -96,4 +108,4 @@
       };
     };
   };
-} 
+}
