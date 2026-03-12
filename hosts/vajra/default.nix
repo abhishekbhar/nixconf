@@ -6,6 +6,6 @@ _: {
     ../../modules/platforms/linux.nix
   ];
 
-  # vajra-specific home-manager overrides can go here
-  # e.g. extra packages, GUI apps, shell config, etc.
+  # vajra-specific home-manager overrides
+  services.ttyd.enable = false;
 }

@@ -7,6 +7,8 @@
     ../../modules/platforms/darwin.nix
   ];
 
+  services.ttyd.enable = true;
+
   # macOS-only packages
   home.packages = with pkgs; [
     podman

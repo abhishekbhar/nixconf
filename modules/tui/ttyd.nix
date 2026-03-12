@@ -16,48 +16,51 @@ let
   '';
 in
 {
-  home.packages = with pkgs; [ ttyd ];
+  options.services.ttyd.enable = lib.mkEnableOption "ttyd terminal over HTTP";
 
-  launchd.agents.ttyd = {
-    enable = true;
-    config = {
-      EnvironmentVariables = {
-        HOME = "${config.home.homeDirectory}";
-        TERM = "xterm-256color";
-        ZELLIJ_CONFIG_DIR = "${config.home.homeDirectory}/.config/zellij";
-        SHELL = "${pkgs.zsh}/bin/zsh";
+  config = lib.mkIf config.services.ttyd.enable {
+    home.packages = with pkgs; [ ttyd ];
+
+    launchd.agents.ttyd = lib.mkIf pkgs.stdenv.isDarwin {
+      enable = true;
+      config = {
+        EnvironmentVariables = {
+          HOME = "${config.home.homeDirectory}";
+          TERM = "xterm-256color";
+          ZELLIJ_CONFIG_DIR = "${config.home.homeDirectory}/.config/zellij";
+          SHELL = "${pkgs.zsh}/bin/zsh";
+        };
+        ProgramArguments = [
+          "${pkgs.ttyd}/bin/ttyd"
+          "-p"
+          ttyd-port
+          "-W"
+          "${zellij-attach}"
+        ];
+        RunAtLoad = true;
+        KeepAlive = true;
+        StandardOutPath = "/tmp/ttyd.out.log";
+        StandardErrorPath = "/tmp/ttyd.err.log";
       };
-      ProgramArguments = [
-        "${pkgs.ttyd}/bin/ttyd"
-        "-p"
-        ttyd-port
-        "-W"
-        "${zellij-attach}"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      StandardOutPath = "/tmp/ttyd.out.log";
-      StandardErrorPath = "/tmp/ttyd.err.log";
     };
-  };
 
-  systemd.user.services.ttyd = {
-    enable = true;
-    description = "ttyd - terminal over HTTP";
-    wantedBy = [ "graphical-session.target" ];
-    serviceConfig = {
-      Type = "simple";
-      Restart = "always";
-      RestartSec = "10s";
-      Environment = [
-        "HOME=${config.home.homeDirectory}"
-        "TERM=xterm-256color"
-        "ZELLIJ_CONFIG_DIR=${config.home.homeDirectory}/.config/zellij"
-        "SHELL=${pkgs.zsh}/bin/zsh"
-      ];
-      ExecStart = "${pkgs.ttyd}/bin/ttyd -p ${ttyd-port} -W ${zellij-attach}";
-      StandardOutput = "journal";
-      StandardError = "journal";
+    systemd.user.services.ttyd = lib.mkIf pkgs.stdenv.isLinux {
+      Unit.Description = "ttyd - terminal over HTTP";
+      wantedBy = [ "graphical-session.target" ];
+      serviceConfig = {
+        Type = "simple";
+        Restart = "always";
+        RestartSec = "10s";
+        Environment = [
+          "HOME=${config.home.homeDirectory}"
+          "TERM=xterm-256color"
+          "ZELLIJ_CONFIG_DIR=${config.home.homeDirectory}/.config/zellij"
+          "SHELL=${pkgs.zsh}/bin/zsh"
+        ];
+        ExecStart = "${pkgs.ttyd}/bin/ttyd -p ${ttyd-port} -W ${zellij-attach}";
+        StandardOutput = "journal";
+        StandardError = "journal";
+      };
     };
   };
 }
