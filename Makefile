@@ -1,20 +1,27 @@
-# Simplified Makefile for multi-platform Nix configurations
+# Multi-host Nix configuration
+# Usage: make <hostname>  (e.g., make mini, make wsl, make vajra)
 
-USER_NAME := abhishekbhar
+# ── Per-host targets ────────────────────────────────────────────
+mini:
+	home-manager switch --flake .#mini -b backup
 
-# Main targets for complete system builds
-wsl:
+wsl-home:
+	home-manager switch --flake .#wsl -b backup
+
+wsl-system:
 	sudo nixos-rebuild switch --flake .#wsl
 
-home:
-	@if [ "$$(uname -s)" = "Darwin" ]; then \
-		echo "Detected macOS – using Home Manager config for mac"; \
-		home-manager switch --flake .#home -b backup; \
-	else \
-		echo "Detected Linux/WSL – using Home Manager config"; \
-		home-manager switch --flake .#home -b backup; \
-	fi
+wsl: wsl-system wsl-home
 
+vajra-home:
+	home-manager switch --flake .#vajra -b backup
+
+vajra-system:
+	sudo nixos-rebuild switch --flake .#vajra
+
+vajra: vajra-system vajra-home
+
+# ── Utilities ───────────────────────────────────────────────────
 update:
 	nix flake update
 
@@ -31,11 +38,20 @@ clean:
 # Show available targets
 help:
 	@echo "Available targets:"
-	@echo "  wsl    - Build complete WSL system (NixOS + Home Manager)"
-	@echo "  home   - Build Home Manager only (auto-detects system)"
-	@echo "  update - Update flake inputs"
-	@echo "  gc     - Run garbage collection"
-	@echo "  check  - Check flake configuration"
-	@echo "  clean  - Remove build artifacts"
+	@echo ""
+	@echo "  Hosts:"
+	@echo "    mini         - Build Home Manager for mini (macOS)"
+	@echo "    wsl          - Build NixOS system + Home Manager for wsl"
+	@echo "    wsl-system   - Build NixOS system only for wsl"
+	@echo "    wsl-home     - Build Home Manager only for wsl"
+	@echo "    vajra        - Build NixOS system + Home Manager for vajra"
+	@echo "    vajra-system - Build NixOS system only for vajra"
+	@echo "    vajra-home   - Build Home Manager only for vajra"
+	@echo ""
+	@echo "  Utilities:"
+	@echo "    update       - Update flake inputs"
+	@echo "    gc           - Run garbage collection"
+	@echo "    check        - Check flake configuration"
+	@echo "    clean        - Remove build artifacts"
 
-.PHONY: wsl home update gc check clean help
+.PHONY: mini wsl wsl-home wsl-system vajra vajra-home vajra-system update gc check clean help

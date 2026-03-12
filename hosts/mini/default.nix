@@ -1,5 +1,36 @@
-{ pkgs, ... }:
+# Host: mini (macOS, aarch64-darwin)
+# macOS-specific packages, shell additions, and kitty config
+{ pkgs, vars, ... }:
 {
+  imports = [
+    ../../modules
+    ../../modules/platforms/darwin.nix
+  ];
+
+  # macOS-only packages
+  home.packages = with pkgs; [
+    podman
+    dive # look into docker image layers
+    podman-compose # start group of containers for dev
+  ];
+
+  # macOS nushell additions
+  programs.nushell.extraConfig = ''
+    $env.PATH = ($env.PATH | append [$"($env.HOME)/.nix-profile/Applications"])
+    $env.NIX_SSL_CERT_FILE = "${vars.ssl_cert_path}";
+
+    # Sync Nix SSL certificates to Podman machine for container registry access
+    if (which podman | is-not-empty) {
+      try {
+        let machine_status = (podman machine list --format "{{.Running}}" | lines | first)
+        if $machine_status == "true" {
+          open "${vars.ssl_cert_path}" | podman machine ssh "sudo tee /etc/pki/ca-trust/source/anchors/nix-ca-cert.pem > /dev/null && sudo update-ca-trust" | ignore
+        }
+      }
+    }
+  '';
+
+  # Full Kitty terminal config for macOS
   programs.kitty = {
     enable = true;
     package = pkgs.kitty;
@@ -19,7 +50,6 @@
       tab_bar_edge = "top";
       tab_bar_margin_width = 0;
       tab_bar_style = "powerline";
-      #tab_bar_style = "fade";
       enabled_layouts = "splits";
       hide_window_decorations = "no";
       background_opacity = 0.85;

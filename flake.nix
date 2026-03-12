@@ -1,10 +1,9 @@
 {
-  description = "My NixOS + Home Manager + nix-darwin config";
+  description = "Multi-host NixOS + Home Manager config";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     mostlatestpkgs.url = "github:nixos/nixpkgs/master";
-    latestpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -23,57 +22,76 @@
       inherit (inputs.nixpkgs) lib;
       vars = import ./vars.nix;
 
-      # Detect current system
-      currentSystem =
-        if inputs.nixpkgs.legacyPackages.aarch64-darwin.stdenv.isDarwin or false then
-          "aarch64-darwin"
-        else
-          "x86_64-linux";
+      # ── Host definitions ──────────────────────────────────────────
+      # Add a new host by adding an entry here and creating hosts/<name>/
+      hosts = {
+        mini = {
+          system = "aarch64-darwin";
+          isNixOS = false;
+        };
+        wsl = {
+          system = "x86_64-linux";
+          isNixOS = true;
+          nixosModules = [
+            inputs.nixos-wsl.nixosModules.wsl
+            ./hosts/wsl/system.nix
+          ];
+        };
+        vajra = {
+          system = "x86_64-linux";
+          isNixOS = true;
+          nixosModules = [
+            ./hosts/vajra/system.nix
+          ];
+        };
+      };
 
-      # Helper to create specialArgs for each profile
-      mkSpecialArgs = system: inputs // { inherit inputs vars system; };
+      # ── Helpers ───────────────────────────────────────────────────
+      mkSpecialArgs = system: {
+        inherit inputs vars system;
+      };
 
-      # Helper to create base modules
-      mkBaseModules =
-        modules:
-        modules
-        ++ [
-          {
-            nix.settings.experimental-features = [
-              "nix-command"
-              "flakes"
-            ];
-            nixpkgs.config.allowUnfree = true;
-          }
-        ];
+      mkExtraPkgs = system: {
+        mostlatestpkgs = import inputs.mostlatestpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
+      };
+
+      mkHome =
+        name: hostCfg:
+        inputs.home-manager.lib.homeManagerConfiguration {
+          pkgs = inputs.nixpkgs.legacyPackages.${hostCfg.system};
+          extraSpecialArgs = mkSpecialArgs hostCfg.system // mkExtraPkgs hostCfg.system;
+          modules = [
+            ./hosts/${name}
+          ];
+        };
+
+      mkNixOS =
+        name: hostCfg:
+        lib.nixosSystem {
+          system = hostCfg.system;
+          specialArgs = mkSpecialArgs hostCfg.system;
+          modules = hostCfg.nixosModules ++ [
+            {
+              nix.settings.experimental-features = [
+                "nix-command"
+                "flakes"
+              ];
+              nixpkgs.config.allowUnfree = true;
+            }
+          ];
+        };
+
+      # Filter hosts by attribute
+      nixosHosts = lib.filterAttrs (_: cfg: cfg.isNixOS) hosts;
     in
     {
-      # WSL NixOS configuration
-      nixosConfigurations.wsl = lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = mkSpecialArgs "x86_64-linux";
-        modules = mkBaseModules [
-          inputs.nixos-wsl.nixosModules.wsl
-          ./wsl/configuration.nix
-        ];
-      };
+      # Generate homeConfigurations for every host
+      homeConfigurations = lib.mapAttrs mkHome hosts;
 
-      # Home Manager configuration
-      homeConfigurations.home = inputs.home-manager.lib.homeManagerConfiguration {
-        pkgs = inputs.nixpkgs.legacyPackages.${currentSystem};
-        extraSpecialArgs = mkSpecialArgs currentSystem // {
-          latestpkgs = import inputs.latestpkgs {
-            system = currentSystem;
-            config.allowUnfree = true;
-          };
-          mostlatestpkgs = import inputs.mostlatestpkgs {
-            system = currentSystem;
-            config.allowUnfree = true;
-          };
-        };
-        modules = [
-          ./home
-        ];
-      };
+      # Generate nixosConfigurations for NixOS hosts only
+      nixosConfigurations = lib.mapAttrs mkNixOS nixosHosts;
     };
 }

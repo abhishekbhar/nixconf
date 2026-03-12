@@ -1,12 +1,12 @@
 {
   pkgs,
-  pkgs-latest,
   vars,
   ...
 }:
 {
   imports = [
     ./bat.nix
+    ./claude.nix
     ./direnv.nix
     ./git.nix
     ./helix.nix
@@ -19,30 +19,27 @@
     ./ttyd.nix
   ];
 
-  home.packages =
-    with pkgs;
-    [
-      fd
-      btop
-      gnumake
-      git-crypt
-      tldr
-      unzip
-      ripgrep
-      nil
-      nixd
-      nixfmt-rfc-style
-      glow
-      nerd-fonts.fira-code
-      gcc
-      gdu
-      zellij
-      gomatrix
-      awscli2
-      duf
-      devenv
-    ]
-    ++ (with pkgs-latest; [ ]);
+  home.packages = with pkgs; [
+    fd
+    btop
+    gnumake
+    git-crypt
+    tldr
+    unzip
+    ripgrep
+    nil
+    nixd
+    nixfmt-rfc-style
+    glow
+    nerd-fonts.fira-code
+    gcc
+    gdu
+    # zellij is managed via programs.zellij below
+    gomatrix
+    awscli2
+    duf
+    devenv
+  ];
 
   fonts = {
     fontconfig.enable = true;
@@ -64,6 +61,13 @@
         "fg+" = "#cdd6f4";
         "prompt" = "#cba6f7";
         "hl+" = "#f38ba8";
+      };
+    };
+
+    zellij = {
+      enable = true;
+      settings = {
+        default_shell = "${pkgs.nushell}/bin/nu";
       };
     };
 

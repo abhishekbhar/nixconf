@@ -2,16 +2,18 @@
   pkgs,
   lib,
   ...
-}: {
+}:
+{
   virtualisation = {
     containers.enable = true;
     podman.enable = lib.mkForce false;
     docker = {
       enable = true;
       daemon.settings = {
-        "features" = { "containerd-snapshotter" = true; };
+        "features" = {
+          "containerd-snapshotter" = true;
+        };
       };
-
 
       enableOnBoot = true;
     };
