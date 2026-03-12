@@ -44,7 +44,6 @@ in
       };
     };
 
-<<<<<<< Updated upstream
     systemd.user.services.ttyd = lib.mkIf pkgs.stdenv.isLinux {
       Unit.Description = "ttyd - terminal over HTTP";
       wantedBy = [ "graphical-session.target" ];
@@ -62,25 +61,6 @@ in
         StandardOutput = "journal";
         StandardError = "journal";
       };
-=======
-  systemd.user.services.ttyd = {
-    enable = true;
-    Unit.Description = "ttyd - terminal over HTTP";
-    wantedBy = [ "graphical-session.target" ];
-    serviceConfig = {
-      Type = "simple";
-      Restart = "always";
-      RestartSec = "10s";
-      Environment = [
-        "HOME=${config.home.homeDirectory}"
-        "TERM=xterm-256color"
-        "ZELLIJ_CONFIG_DIR=${config.home.homeDirectory}/.config/zellij"
-        "SHELL=${pkgs.zsh}/bin/zsh"
-      ];
-      ExecStart = "${pkgs.ttyd}/bin/ttyd -p ${ttyd-port} -W ${zellij-attach}";
-      StandardOutput = "journal";
-      StandardError = "journal";
->>>>>>> Stashed changes
     };
   };
 }

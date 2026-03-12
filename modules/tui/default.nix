@@ -16,7 +16,7 @@
     ./yazi.nix
     ./opencode.nix
     ./kitty.nix
-#    ./ttyd.nix
+    ./ttyd.nix
   ];
 
   home.packages = with pkgs; [
