@@ -4,8 +4,11 @@
   pkgs,
   vars,
   ...
-}: {
-  home.activation.removeExistingGitconfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] "rm -f ${config.home.homeDirectory}/.gitconfig";
+}:
+{
+  home.activation.removeExistingGitconfig = lib.hm.dag.entryBefore [
+    "checkLinkTargets"
+  ] "rm -f ${config.home.homeDirectory}/.gitconfig";
 
   home.packages = with pkgs; [ lazygit ];
 
@@ -25,13 +28,4 @@
     };
   };
 
-  # SSH configuration for git operations
-  programs.ssh.matchBlocks."github.com" = {
-    hostname = "github.com";
-    identityFile = vars.git_ssh_identity_file;
-    addKeysToAgent = "yes";
-    extraOptions = {
-      UseKeychain = "yes";
-    };
-  };
 }

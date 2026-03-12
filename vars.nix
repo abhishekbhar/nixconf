@@ -12,5 +12,8 @@
 
   # SSH identity files
   git_ssh_identity_file = "~/.ssh/id_github";
+
+  # API Keys (optional)
+  context7ApiKey = "<ACTUAL_API_KEY>";
  
 }
