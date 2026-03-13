@@ -48,5 +48,12 @@
   # Enable nix-ld for running unpatched binaries
   programs.nix-ld.enable = true;
 
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = true;
+    };
+  };
+
   system.stateVersion = "24.11";
 }
