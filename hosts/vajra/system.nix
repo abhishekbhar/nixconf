@@ -8,6 +8,7 @@
   # TODO: Import hardware-configuration.nix from your NixOS install
   imports = [
     ./hardware-configuration.nix
+    ./virtualisation.nix
   ];
 
   users.users.${vars.os_user} = {
@@ -19,6 +20,7 @@
       "networkmanager"
       "video"
       "audio"
+      "docker"
     ];
     shell = pkgs.nushell;
   };
@@ -53,6 +55,23 @@
     settings = {
       PasswordAuthentication = true;
     };
+  };
+
+  # Server mode: ignore lid close, disable sleep/hibernate
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+    HandleSuspendKey = "ignore";
+    HandleHibernateKey = "ignore";
+    IdleAction = "ignore";
+  };
+
+  systemd.targets = {
+    sleep.enable = false;
+    suspend.enable = false;
+    hibernate.enable = false;
+    hybrid-sleep.enable = false;
   };
 
   system.stateVersion = "24.11";
