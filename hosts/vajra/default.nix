@@ -7,5 +7,5 @@ _: {
   ];
 
   # vajra-specific home-manager overrides
-  services.ttyd.enable = false;
+  services.ttyd.enable = true;
 }

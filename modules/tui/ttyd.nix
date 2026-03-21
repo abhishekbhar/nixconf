@@ -46,8 +46,8 @@ in
 
     systemd.user.services.ttyd = lib.mkIf pkgs.stdenv.isLinux {
       Unit.Description = "ttyd - terminal over HTTP";
-      wantedBy = [ "graphical-session.target" ];
-      serviceConfig = {
+      Install.WantedBy = [ "default.target" ];
+      Service = {
         Type = "simple";
         Restart = "always";
         RestartSec = "10s";
