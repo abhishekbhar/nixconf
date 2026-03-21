@@ -11,7 +11,6 @@ let
     export HOME="${config.home.homeDirectory}"
     export TERM="xterm-256color"
     export ZELLIJ_CONFIG_DIR="${config.home.homeDirectory}/.config/zellij"
-    export SHELL="${pkgs.zsh}/bin/zsh"
     exec ${pkgs.zellij}/bin/zellij attach Remote-Work --create
   '';
 in
@@ -28,7 +27,6 @@ in
           HOME = "${config.home.homeDirectory}";
           TERM = "xterm-256color";
           ZELLIJ_CONFIG_DIR = "${config.home.homeDirectory}/.config/zellij";
-          SHELL = "${pkgs.zsh}/bin/zsh";
         };
         ProgramArguments = [
           "${pkgs.ttyd}/bin/ttyd"
@@ -55,7 +53,6 @@ in
           "HOME=${config.home.homeDirectory}"
           "TERM=xterm-256color"
           "ZELLIJ_CONFIG_DIR=${config.home.homeDirectory}/.config/zellij"
-          "SHELL=${pkgs.zsh}/bin/zsh"
         ];
         ExecStart = "${pkgs.ttyd}/bin/ttyd -p ${ttyd-port} -W ${zellij-attach}";
         StandardOutput = "journal";

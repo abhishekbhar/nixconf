@@ -33,6 +33,7 @@
   networking = {
     hostName = "vajra";
     networkmanager.enable = true;
+    firewall.allowedTCPPorts = [ 2828 ];
   };
 
   # Boot loader - adjust for your system
