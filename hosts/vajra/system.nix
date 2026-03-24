@@ -9,6 +9,7 @@
   imports = [
     ./hardware-configuration.nix
     ./virtualisation.nix
+    ./paperclip.nix
     ../../modules/nixos/tailscale.nix
   ];
 
