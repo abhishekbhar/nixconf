@@ -9,7 +9,11 @@
   imports = [
     ./hardware-configuration.nix
     ./virtualisation.nix
+    ../../modules/nixos/tailscale.nix
   ];
+
+  # Enable Tailscale VPN
+  services.tailscale-vpn.enable = true;
 
   users.users.${vars.os_user} = {
     isNormalUser = true;

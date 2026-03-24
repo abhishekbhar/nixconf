@@ -3,7 +3,8 @@
   lib,
   vars,
   ...
-}: {
+}:
+{
   programs.nushell = {
     enable = true;
     settings = {
@@ -50,7 +51,7 @@
         from_string = lib.hm.nushell.mkNushellInline "{|s| $s | split row (char esep) }";
         to_string = lib.hm.nushell.mkNushellInline "{|v| $v | str join (char esep) }";
       };
-#      NIX_SSL_CERT_FILE = vars.ssl_cert_path;
+      #      NIX_SSL_CERT_FILE = vars.ssl_cert_path;
       EDITOR = "hx";
     };
     shellAliases = {
@@ -91,14 +92,7 @@
     extraConfig = ''
       $env.PATH = ($env.PATH | append [$"($env.HOME)/.nix-profile/bin" $"($env.HOME)/.local/bin" "/nix/var/nix/profiles/default/bin"])
       def random-art [] {
-        # Define two external command/argument lists
-        let choices = [
-          [ "${pkgs.dwt1-shell-color-scripts}/bin/colorscript", "random" ],
-          [ "${pkgs.krabby}/bin/krabby", "random", "--no-mega", "--no-gmax", "--no-regional", "--no-title", "-s" ]
-        ]
-
-        # Pick one at random and run it
-        run-external (echo $choices | shuffle | first)
+        run-external "${pkgs.krabby}/bin/krabby" "random" "--no-mega" "--no-gmax" "--no-regional" "--no-title" "-s"
       }
       alias ff = ${pkgs.fastfetch}/bin/fastfetch --logo-type data-raw --logo (random-art | decode utf8) -c ~/.config/fastfetch/config.jsonc
       ff
