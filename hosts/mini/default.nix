@@ -11,9 +11,9 @@
 
   # macOS-only packages
   home.packages = with pkgs; [
-    podman
+    docker
     dive # look into docker image layers
-    podman-compose # start group of containers for dev
+    docker-compose # start group of containers for dev
   ];
 
   # macOS nushell additions
@@ -21,15 +21,6 @@
     $env.PATH = ($env.PATH | append [$"($env.HOME)/.nix-profile/Applications"])
     $env.NIX_SSL_CERT_FILE = "${vars.ssl_cert_path}";
 
-    # Sync Nix SSL certificates to Podman machine for container registry access
-    if (which podman | is-not-empty) {
-      try {
-        let machine_status = (podman machine list --format "{{.Running}}" | lines | first)
-        if $machine_status == "true" {
-          open "${vars.ssl_cert_path}" | podman machine ssh "sudo tee /etc/pki/ca-trust/source/anchors/nix-ca-cert.pem > /dev/null && sudo update-ca-trust" | ignore
-        }
-      }
-    }
   '';
 
   # Full Kitty terminal config for macOS

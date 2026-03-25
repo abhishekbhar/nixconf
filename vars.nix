@@ -1,8 +1,6 @@
 {
-  # os user and system name below are default for nix wsl install
-  # If changing these remember to follow readme steps to rebuild 
+  # Shared user identity -- used across all hosts
   os_user = "abhishekbhar";
-  system_name= "nixos";
 
   # User information
   vcs_user = "Abhishek Bhardwaj";
@@ -14,6 +12,5 @@
   git_ssh_identity_file = "~/.ssh/id_github";
 
   # API Keys (optional)
-  context7ApiKey = "<ACTUAL_API_KEY>";
- 
+  context7ApiKey = "ctx7sk-2273dde2-a65f-4694-8d50-8acc73132570";
 }
