@@ -38,6 +38,7 @@ let
           PAPERCLIP_PUBLIC_URL: "http://192.168.11.101:3100"
           PAPERCLIP_ALLOWED_HOSTNAMES: "localhost,192.168.11.101"
           PAPERCLIP_HOME: "/paperclip"
+          CLAUDE_CONFIG_DIR: "/home/node/.claude"
         volumes:
           - paperclip-data:/paperclip
           - /home/abhishekbhar/.claude:/home/node/.claude:ro
@@ -73,6 +74,11 @@ in
         git clone https://github.com/paperclipai/paperclip.git /var/lib/paperclip/repo
       else
         git -C /var/lib/paperclip/repo pull --ff-only || true
+      fi
+
+      # Fix upstream Dockerfile: patches dir must be copied before pnpm install
+      if ! grep -q 'COPY patches/' /var/lib/paperclip/repo/Dockerfile; then
+        ${pkgs.gnused}/bin/sed -i 's|RUN pnpm install --frozen-lockfile|COPY patches/ patches/\nRUN pnpm install --frozen-lockfile|' /var/lib/paperclip/repo/Dockerfile
       fi
     '';
 

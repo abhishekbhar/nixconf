@@ -9,7 +9,7 @@
   imports = [
     ./hardware-configuration.nix
     ./virtualisation.nix
-    ./paperclip.nix
+    #    ./paperclip.nix
     ../../modules/nixos/tailscale.nix
   ];
 
@@ -34,11 +34,24 @@
     home-manager
   ];
 
+  # Syncthing
+  services.syncthing = {
+    enable = true;
+    user = vars.os_user;
+    group = "users";
+    dataDir = "/home/${vars.os_user}/Sync";
+    configDir = "/home/${vars.os_user}/.config/syncthing";
+    openDefaultPorts = true;
+  };
+
   # Enable networking
   networking = {
     hostName = "vajra";
     networkmanager.enable = true;
-    firewall.allowedTCPPorts = [ 2828 ];
+    firewall.allowedTCPPorts = [
+      2828
+      8384
+    ];
   };
 
   # Boot loader - adjust for your system
