@@ -1,5 +1,6 @@
 # Host: vajra - NixOS system configuration
 {
+  config,
   pkgs,
   vars,
   ...
@@ -32,7 +33,30 @@
 
   environment.systemPackages = with pkgs; [
     home-manager
+    bash
   ];
+
+  # NVIDIA drivers for GTX 1650 Mobile (Turing, TU117)
+  hardware.graphics.enable = true;
+  services.xserver.videoDrivers = [ "nvidia" ];
+  hardware.nvidia = {
+    modesetting.enable = true;
+    open = false;
+    nvidiaSettings = false;
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
+  };
+
+  # Ollama
+  services.ollama = {
+    enable = true;
+    host = "0.0.0.0";
+    openFirewall = true;
+    package = pkgs.ollama-cuda;
+    environmentVariables = {
+      OLLAMA_FLASH_ATTENTION = "1";
+      OLLAMA_KV_CACHE_TYPE = "q8_0";
+    };
+  };
 
   # Syncthing
   services.syncthing = {
@@ -42,7 +66,19 @@
     dataDir = "/home/${vars.os_user}/Sync";
     configDir = "/home/${vars.os_user}/.config/syncthing";
     openDefaultPorts = true;
+    guiAddress = "0.0.0.0:8384";
   };
+
+  # 2TB SSD mount
+  fileSystems."/mnt/storage" = {
+    device = "/dev/disk/by-uuid/aa954c90-1483-4aa2-8819-da72d5fc67ed";
+    fsType = "ext4";
+    options = [ "defaults" "nofail" ];
+  };
+
+  systemd.tmpfiles.rules = [
+    "d /mnt/storage 0755 ${vars.os_user} users -"
+  ];
 
   # Enable networking
   networking = {

@@ -90,7 +90,7 @@
       dc = "docker-compose";
     };
     extraConfig = ''
-      $env.PATH = ($env.PATH | append [$"($env.HOME)/.nix-profile/bin" $"($env.HOME)/.local/bin" "/nix/var/nix/profiles/default/bin"])
+      $env.PATH = ($env.PATH | append [$"($env.HOME)/.nix-profile/bin" $"($env.HOME)/.local/bin" "/nix/var/nix/profiles/default/bin" "/run/current-system/sw/bin" "/run/wrappers/bin"])
       def random-art [] {
         run-external "${pkgs.krabby}/bin/krabby" "random" "--no-mega" "--no-gmax" "--no-regional" "--no-title" "-s"
       }

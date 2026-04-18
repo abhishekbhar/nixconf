@@ -267,6 +267,18 @@
           };
         };
       };
+      ollama = {
+        npm = "@ai-sdk/openai-compatible";
+        name = "Ollama (vajra)";
+        options = {
+          baseURL = "http://vajra:11434/v1";
+        };
+        models = {
+          "gemma4:e4b" = {
+            name = "Gemma 4 (e4b)";
+          };
+        };
+      };
       google = {
         models = {
           "antigravity-gemini-3-pro" = {

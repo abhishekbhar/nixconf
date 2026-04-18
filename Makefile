@@ -1,6 +1,9 @@
 # Multi-host Nix configuration
 # Usage: make <hostname>  (e.g., make mini, make wsl, make vajra)
 
+SHELL := /run/current-system/sw/bin/bash
+export PATH := /run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$(PATH)
+
 # ── Per-host targets ────────────────────────────────────────────
 mini:
 	home-manager switch --flake .#mini -b backup
