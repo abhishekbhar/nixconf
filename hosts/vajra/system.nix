@@ -11,6 +11,8 @@
     ./hardware-configuration.nix
     ./virtualisation.nix
     #    ./paperclip.nix
+    ./coder.nix
+    # ./coder-egress.nix   # enable once Maven mirror / Squid is in place
     ../../modules/nixos/tailscale.nix
   ];
 
@@ -46,18 +48,6 @@
     package = config.boot.kernelPackages.nvidiaPackages.stable;
   };
 
-  # Ollama
-  services.ollama = {
-    enable = true;
-    host = "0.0.0.0";
-    openFirewall = true;
-    package = pkgs.ollama-cuda;
-    environmentVariables = {
-      OLLAMA_FLASH_ATTENTION = "1";
-      OLLAMA_KV_CACHE_TYPE = "q8_0";
-    };
-  };
-
   # Syncthing
   services.syncthing = {
     enable = true;
@@ -88,6 +78,13 @@
       2828
       8384
     ];
+    # Coder (7080): only reachable from server2 (LAN + Tailscale v4/v6).
+    # nginx on server2 fronts coder.abhibhr.in and *.coder.abhibhr.in.
+    firewall.extraCommands = ''
+      iptables  -I nixos-fw -p tcp -s 192.168.11.102           --dport 7080 -j nixos-fw-accept
+      iptables  -I nixos-fw -p tcp -s 100.87.43.112            --dport 7080 -j nixos-fw-accept
+      ip6tables -I nixos-fw -p tcp -s fd7a:115c:a1e0::8932:2b70 --dport 7080 -j nixos-fw-accept
+    '';
   };
 
   # Boot loader - adjust for your system
