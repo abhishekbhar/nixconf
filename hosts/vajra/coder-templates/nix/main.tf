@@ -107,7 +107,6 @@ resource "coder_app" "frontend" {
   url          = "http://localhost:3000"
   subdomain    = true
   share        = "owner"
-  external     = false
 }
 
 # ---------- dedicated docker network ----------
