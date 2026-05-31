@@ -41,6 +41,12 @@
     # TODO(maven): allow internal Maven mirror or Sonatype Nexus
     # iptables -A CODER-EGRESS -d <mirror-ip> -p tcp --dport <port> -j RETURN
 
+    # TODO(nix): the workspace image is Nix-based. Run-time `nix develop` pulls
+    # from the binary cache, so enabling this firewall WILL break flake shells
+    # unless cache.nixos.org (Fastly) is reachable. Either run an internal Nix
+    # cache/substituter and allow it here, or allow Fastly's published CIDRs.
+    # iptables -A CODER-EGRESS -d <nix-cache-ip> -p tcp --dport 443 -j RETURN
+
     # Default deny — log + reject so devs see a clear "permission denied"
     iptables -A CODER-EGRESS -j LOG --log-prefix "coder-egress drop: " --log-level 6
     iptables -A CODER-EGRESS -j REJECT --reject-with icmp-net-prohibited
