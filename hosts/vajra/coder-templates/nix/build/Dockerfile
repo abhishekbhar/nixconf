@@ -1,57 +1,63 @@
-# Java dev workspace image for Coder on vajra.
-# - JDK 21 (Temurin)
-# - Maven, Gradle
-# - Node 20 (frontend tooling)
-# - code-server (browser IDE)
-# - Non-root user `coder` UID 1000
-FROM ubuntu:24.04
+# Minimal dev workspace image for Coder on vajra.
+# - Debian slim base, no language toolchains baked in.
+# - Single-user Nix (no daemon) with flakes enabled.
+# - direnv + nix-direnv so a project's flake.nix + .envrc auto-loads on `cd`.
+# - code-server (browser IDE) + the mkhl.direnv VS Code extension.
+# - Non-root user `coder` UID 1000 (matches main.tf `user = "1000:1000"`).
+#
+# Toolchains (JDK, Node, etc.) come from each project's flake — not this image.
+FROM debian:stable-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64 \
-    MAVEN_HOME=/opt/maven \
-    GRADLE_HOME=/opt/gradle \
-    PATH=/opt/maven/bin:/opt/gradle/bin:/usr/lib/jvm/temurin-21-jdk-amd64/bin:/usr/local/bin:/usr/bin:/bin
+    USER=coder \
+    HOME=/home/coder
 
+# Minimal host tooling. xz-utils + curl are required by the Nix installer.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl wget gnupg lsb-release sudo git \
-      unzip zip bash-completion jq vim less \
-      build-essential pkg-config \
+      ca-certificates curl git xz-utils sudo bash \
     && rm -rf /var/lib/apt/lists/*
 
-# Temurin JDK 21
-RUN install -d -m 0755 /etc/apt/keyrings \
- && curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public \
-      | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg \
- && echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb noble main" \
-      > /etc/apt/sources.list.d/adoptium.list \
- && apt-get update && apt-get install -y --no-install-recommends temurin-21-jdk \
- && rm -rf /var/lib/apt/lists/*
+# Non-root user matching the container UID/GID enforced by main.tf.
+RUN useradd --create-home --uid 1000 --shell /bin/bash coder
 
-# Maven
-ARG MAVEN_VERSION=3.9.9
-RUN curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
-      | tar -xz -C /opt && ln -s "/opt/apache-maven-${MAVEN_VERSION}" /opt/maven
+# Enable flakes globally before any nix command runs (read by single-user nix too).
+RUN mkdir -p /etc/nix \
+ && printf 'experimental-features = nix-command flakes\n' > /etc/nix/nix.conf
 
-# Gradle
-ARG GRADLE_VERSION=8.10.2
-RUN curl -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
- && unzip -q /tmp/gradle.zip -d /opt && rm /tmp/gradle.zip \
- && ln -s "/opt/gradle-${GRADLE_VERSION}" /opt/gradle
+# Pre-create the Nix store owned by coder so the single-user installer needs no sudo.
+RUN mkdir -m 0755 /nix && chown coder:coder /nix
 
-# Node 20 (NodeSource)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
- && apt-get install -y --no-install-recommends nodejs \
- && rm -rf /var/lib/apt/lists/*
-
-# code-server
+# Code-server installs as root to /usr/bin/code-server (main.tf startup_script
+# calls that exact path).
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
-# Non-root user
-RUN useradd --create-home --uid 1000 --shell /bin/bash coder \
- && mkdir -p /home/coder/workspace \
- && chown -R coder:coder /home/coder
-
+# Everything below runs as the non-root coder user.
 USER coder
 WORKDIR /home/coder
+
+# Single-user Nix install (no daemon). /nix is already coder-owned.
+RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon --no-channel-add
+
+# Install direnv + nix-direnv into coder's nix profile.
+RUN . /home/coder/.nix-profile/etc/profile.d/nix.sh \
+ && nix profile install nixpkgs#direnv nixpkgs#nix-direnv
+
+# Wire the interactive shell: source Nix, hook direnv, source nix-direnv's direnvrc.
+RUN mkdir -p /home/coder/.config/direnv \
+ && printf 'source %s/.nix-profile/share/nix-direnv/direnvrc\n' "$HOME" \
+      > /home/coder/.config/direnv/direnvrc \
+ && printf '\n# --- Nix + direnv (added by image) ---\nif [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then . "$HOME/.nix-profile/etc/profile.d/nix.sh"; fi\nexport PATH="$HOME/.nix-profile/bin:$PATH"\neval "$(direnv hook bash)"\n' \
+      >> /home/coder/.bashrc
+
+# Install the direnv VS Code extension + minimal settings so the integrated
+# terminal/extension pick up the flake environment automatically.
+RUN . /home/coder/.nix-profile/etc/profile.d/nix.sh \
+ && /usr/bin/code-server --install-extension mkhl.direnv \
+ && mkdir -p /home/coder/.local/share/code-server/User \
+ && printf '{\n  "direnv.restart.automatic": true\n}\n' \
+      > /home/coder/.local/share/code-server/User/settings.json
+
+# Make sure the workspace mount point exists (matches main.tf startup_script).
+RUN mkdir -p /home/coder/workspace
