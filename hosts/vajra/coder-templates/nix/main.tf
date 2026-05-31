@@ -130,7 +130,7 @@ resource "docker_volume" "home" {
 }
 
 resource "docker_image" "main" {
-  name = "coder-java:latest"
+  name = "coder-nix:latest"
   build {
     context = "${path.module}/build"
   }
