@@ -17,6 +17,7 @@
     ./opencode.nix
     ./kitty.nix
     ./ttyd.nix
+    ./pi.nix
   ];
 
   home.packages = with pkgs; [

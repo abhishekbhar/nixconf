@@ -48,6 +48,14 @@
     package = config.boot.kernelPackages.nvidiaPackages.stable;
   };
 
+  # Ollama (LLM server with NVIDIA CUDA acceleration)
+  services.ollama = {
+    enable = true;
+    package = pkgs.ollama-cuda;
+    host = "127.0.0.1";
+    port = 11434;
+  };
+
   # Syncthing
   services.syncthing = {
     enable = true;
