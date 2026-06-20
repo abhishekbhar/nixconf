@@ -6,13 +6,13 @@
 let
   pi = pkgs.buildNpmPackage {
     pname = "pi-coding-agent";
-    version = "0.79.1";
+    version = "0.79.8";
     src = pkgs.fetchurl {
-      url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-0.79.1.tgz";
-      sha256 = "1pcpylvn3xj0pzkbik4i71jq0cv54kcl8qf8n5g8ilm81wnbysx9";
+      url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-0.79.8.tgz";
+      sha256 = "494de83a62df3f7a3c3197ba00870890f3bcc3561bbcc9b9d0a9c62dfb4e3e62";
     };
     sourceRoot = "package";
-    npmDepsHash = "sha256-CUTMzOmKoSzq/yq+8DEIb7rJVw+2Vt12lWN5nFX5Eo0=";
+    npmDepsHash = "sha256-nIVVyGkkMWHs0oSHjHCHcuXtV1fXREIgDgYNhjTFrgY=";
     postPatch = ''
       cp ${./pi-lock.json} npm-shrinkwrap.json
     '';
