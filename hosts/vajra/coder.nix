@@ -24,10 +24,12 @@ let
           - /mnt/storage/coder/pgdata:/var/lib/postgresql/data
 
       coder:
-        image: ghcr.io/coder/coder:latest
+        image: ghcr.io/coder/coder:2.33.9
         restart: unless-stopped
         # Root so the server can read /var/run/docker.sock without pinning
         # the host docker GID. Provisions workspace containers only.
+        # Image pinned to 2.33.9 (Stable channel, released 2026-06-17)
+        # to keep us off Mainline. See coder.nix commit history for bumps.
         user: root
         ports:
           - "7080:7080"
