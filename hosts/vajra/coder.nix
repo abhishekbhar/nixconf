@@ -45,6 +45,7 @@ let
           CODER_PROXY_TRUSTED_HEADERS: "X-Forwarded-For,X-Forwarded-Proto"
           CODER_PROXY_TRUSTED_ORIGINS: "192.168.11.102/32,100.87.43.112/32"
           CODER_TELEMETRY: "false"
+          CODER_BLOCK_FILEDL: "true"
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
           - /mnt/storage/coder/data:/home/coder/.config/coderv2

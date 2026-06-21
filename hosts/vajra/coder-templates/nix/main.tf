@@ -58,6 +58,17 @@ resource "coder_agent" "main" {
   startup_script          = <<-EOT
     set -e
     mkdir -p /home/coder/workspace
+
+    # Git user config — VS Code Git extension needs this to avoid
+    # "Cannot read properties of undefined (reading 'some')" errors.
+    # Falls back to env vars (set by Coder from workspace owner) if
+    # local config was lost after container rebuild on persistent volume.
+    git config --global user.name  "${data.coder_workspace_owner.me.full_name}" 2>/dev/null || true
+    git config --global user.email "${data.coder_workspace_owner.me.email}" 2>/dev/null || true
+    # SSH variant — Git defaults to 'simple' in bare environments, which breaks
+    # port-specified SSH URLs like ssh://git@host:2222/org/repo.git
+    git config --global ssh.variant ssh 2>/dev/null || true
+
     # code-server in the background; the coder_app block below proxies it.
     /usr/bin/code-server \
       --auth none \
@@ -89,7 +100,7 @@ resource "coder_app" "code-server" {
   display_name = "VS Code"
   url          = "http://localhost:13337/?folder=/home/coder/workspace"
   icon         = "/icon/code.svg"
-  subdomain    = true
+  subdomain    = false
   share        = "owner"
   healthcheck {
     url       = "http://localhost:13337/healthz"
@@ -105,7 +116,7 @@ resource "coder_app" "frontend" {
   slug         = "frontend"
   display_name = "Frontend (3000)"
   url          = "http://localhost:3000"
-  subdomain    = true
+  subdomain    = false
   share        = "owner"
 }
 
@@ -113,12 +124,8 @@ resource "coder_app" "frontend" {
 # Pinned bridge name so the host-side egress firewall (Phase 5) can target
 # workspace traffic specifically via `-i br-coderws`. Linux caps interface
 # names at 15 chars; br-coderws is 10.
-resource "docker_network" "workspaces" {
-  name   = "coder-workspaces"
-  driver = "bridge"
-  options = {
-    "com.docker.network.bridge.name" = "br-coderws"
-  }
+data "docker_network" "workspaces" {
+  name = "coder-workspaces"
 }
 
 # ---------- per-workspace state ----------
@@ -163,7 +170,7 @@ resource "docker_container" "workspace" {
   ]
 
   networks_advanced {
-    name = docker_network.workspaces.name
+    name = data.docker_network.workspaces.name
   }
 
   # Pin DNS directly to PiHole on server2 — split-horizon for *.abhibhr.in

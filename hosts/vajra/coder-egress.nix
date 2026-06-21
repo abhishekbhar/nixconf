@@ -45,7 +45,9 @@
     # from the binary cache, so enabling this firewall WILL break flake shells
     # unless cache.nixos.org (Fastly) is reachable. Either run an internal Nix
     # cache/substituter and allow it here, or allow Fastly's published CIDRs.
-    # iptables -A CODER-EGRESS -d <nix-cache-ip> -p tcp --dport 443 -j RETURN
+    # cache.nixos.org (Fastly CDN) — needed for `nix develop` / `nix build` at runtime
+    iptables -A CODER-EGRESS -d 151.101.0.0/16 -p tcp --dport 443 -j RETURN
+    iptables -A CODER-EGRESS -d 199.232.0.0/16 -p tcp --dport 443 -j RETURN
 
     # Default deny — log + reject so devs see a clear "permission denied"
     iptables -A CODER-EGRESS -j LOG --log-prefix "coder-egress drop: " --log-level 6

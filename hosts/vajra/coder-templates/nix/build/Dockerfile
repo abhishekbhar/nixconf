@@ -6,7 +6,7 @@
 # - Non-root user `coder` UID 1000 (matches main.tf `user = "1000:1000"`).
 #
 # Toolchains (JDK, Node, etc.) come from each project's flake — not this image.
-FROM debian:stable-slim
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
@@ -33,6 +33,12 @@ RUN mkdir -m 0755 /nix && chown coder:coder /nix
 # calls that exact path).
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
+# Pre-create coder's xdg directories owned by coder.
+# Some Debian postinst scripts create /home/coder/.cache as root,
+# which breaks nix profile install (permission denied).
+RUN mkdir -p /home/coder/.cache /home/coder/.local/share \
+    && chown -R coder:coder /home/coder/.cache /home/coder/.local
+
 # Everything below runs as the non-root coder user.
 USER coder
 WORKDIR /home/coder
@@ -51,11 +57,9 @@ RUN mkdir -p /home/coder/.config/direnv \
  && printf '\n# --- Nix + direnv (added by image) ---\nif [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then . "$HOME/.nix-profile/etc/profile.d/nix.sh"; fi\nexport PATH="$HOME/.nix-profile/bin:$PATH"\neval "$(direnv hook bash)"\n' \
       >> /home/coder/.bashrc
 
-# Install the direnv VS Code extension + minimal settings so the integrated
-# terminal/extension pick up the flake environment automatically.
-RUN . /home/coder/.nix-profile/etc/profile.d/nix.sh \
- && /usr/bin/code-server --install-extension mkhl.direnv \
- && mkdir -p /home/coder/.local/share/code-server/User \
+# Direnv VS Code extension removed — causes "Cannot read properties of undefined"
+# with VS Code 1.125+. Direnv still works in terminal via .bashrc.
+RUN mkdir -p /home/coder/.local/share/code-server/User \
  && printf '{\n  "direnv.restart.automatic": true\n}\n' \
       > /home/coder/.local/share/code-server/User/settings.json
 

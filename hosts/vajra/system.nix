@@ -12,7 +12,7 @@
     ./virtualisation.nix
     #    ./paperclip.nix
     ./coder.nix
-    # ./coder-egress.nix   # enable once Maven mirror / Squid is in place
+    # ./coder-egress.nix   # enable once ready to restrict egress
     ../../modules/nixos/tailscale.nix
   ];
 
