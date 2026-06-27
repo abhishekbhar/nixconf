@@ -1,0 +1,119 @@
+# ─────────────────────────────────────────────────────────────────────
+# Dev container — Tailscale sidecar + dev environment
+# ─────────────────────────────────────────────────────────────────────
+# Architecture:
+#   tailscale sidecar ──shares network──> devbox container
+#
+# The sidecard joins your tailnet. The dev container shares its network
+# namespace, so sshd and code-server are reachable via the Tailscale IP.
+# No tailscale is installed in the dev container — cleaner separation.
+#
+# Multi-developer: each dev runs with a different project name:
+#   docker compose -f devcontainer/docker-compose.yml \
+#     --env-file .env.abhishek -p devbox-abhishek up -d
+#
+# Connect:
+#   ssh coder@devbox-abhishek          (MagicDNS)
+#   ssh coder@$(tailscale ip -4 devbox-abhishek)  (direct IP)
+#   http://<ts-ip>:13337               (code-server)
+# ─────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Tailscale sidecar ──────────────────────────────────────────
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: ts-${DEV_USER:-coder}
+    hostname: devbox-${DEV_USER:-coder}
+
+    environment:
+      TS_AUTH_KEY: ${TS_AUTH_KEY:?Set TS_AUTH_KEY in your .env — create at login.tailscale.com/admin/settings/keys}
+      TS_STATE_DIR: /var/lib/tailscale/state
+      # Userspace=off means kernel TUN mode — better perf, needs /dev/net/tun
+      TS_USERSPACE: "false"
+      # Extra flags: no DNS (you have PiHole), accept routes for subnet forwarding
+      TS_EXTRA_ARGS: --accept-dns=false --accept-routes
+      # TS_SSH: true  # Uncomment for `tailscale ssh` — but then SSH
+      #                 # targets the sidecar, not the dev container.
+      #                 # Without it, use regular SSH over the tailnet.
+
+    volumes:
+      - tsstate:/var/lib/tailscale/state
+      - /dev/net/tun:/dev/net/tun
+
+    cap_add:
+      - NET_ADMIN
+
+    restart: unless-stopped
+
+    healthcheck:
+      # Just check the daemon is running and authenticated.
+      # --peers=true would fail on a single-node tailnet with no peers.
+      test: ["CMD-SHELL", "test -S /var/run/tailscale/tailscaled.sock && tailscale status 2>/dev/null | head -1 | grep -qE '(connected|stopped)' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ── Dev container ─────────────────────────────────────────────
+  devbox:
+    # Share the tailscale container's network namespace — the dev
+    # container's sshd and code-server are reachable via the tailnet IP
+    # without exposing any ports to the Docker bridge.
+    network_mode: "service:tailscale"
+    depends_on:
+      tailscale:
+        condition: service_healthy
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: devbox-${DEV_USER:-coder}
+
+    environment:
+      DEV_USER: ${DEV_USER}
+      GIT_USER_NAME: ${GIT_USER_NAME}
+      GIT_USER_EMAIL: ${GIT_USER_EMAIL}
+      SSH_PUBLIC_KEYS: ${SSH_PUBLIC_KEYS:-}
+
+    # ── Resource limits (per-developer) ──────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "${DEV_CPUS:-4}"
+          memory: "${DEV_MEMORY:-8G}"
+
+    # ── Volumes ──────────────────────────────────────────────────
+    volumes:
+      # Docker socket (Docker-outside-of-Docker) — shared across all
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Home directory — isolated per developer (project-prefixed volume)
+      - devbox-home:/home/coder
+      # Optional: bind-mount project repos
+      # - /mnt/storage/projects:/home/coder/workspace
+
+    # ── Health check ─────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep sshd >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    restart: unless-stopped
+
+# ── Named volumes (prefixed by project name) ───────────────────────
+volumes:
+  tsstate:
+  devbox-home:

@@ -1,0 +1,3 @@
+# Per-developer environment files (gitignored — each dev has their own)
+.env
+.env.*

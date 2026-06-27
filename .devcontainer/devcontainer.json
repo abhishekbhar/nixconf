@@ -1,0 +1,56 @@
+// ────────────────────────────────────────────────────────────────────
+// Dev Containers configuration (VS Code / Cursor / Windsurf)
+// ────────────────────────────────────────────────────────────────────
+// Opens nixconf in a dev container from the multi-developer compose
+// stack. Each developer sets their identity in devcontainer/.env
+// (gitignored — does not leak to the repo).
+//
+// Use:
+//   1. Create devcontainer/.env (copy from devcontainer/.env.example)
+//   2. Set DEV_USER, GIT_USER_NAME, GIT_USER_EMAIL, TS_AUTH_KEY
+//   3. Cmd+Shift+P → "Dev Containers: Reopen in Container"
+// ────────────────────────────────────────────────────────────────────
+{
+  "name": "nixconf-devbox",
+  "dockerComposeFile": ["../devcontainer/docker-compose.yml"],
+  "service": "devbox",
+  "workspaceFolder": "/home/coder/workspace",
+
+  // ── Extensions to install in the container ────────────────────
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mkhl.direnv",
+        "bbenoist.Nix",
+        "jnoortheen.nix-ide",
+        "eamodio.gitlens",
+        "tamasfe.even-better-toml",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "direnv.restart.automatic": true,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "nix.enableLanguageServer": true
+      }
+    }
+  },
+
+  // ── Remote user ───────────────────────────────────────────────
+  "remoteUser": "coder",
+  "containerUser": "coder",
+
+  // ── Mounts ────────────────────────────────────────────────────
+  "mounts": [
+    // Bind-mount the nixconf repo so changes appear live
+    "source=${localWorkspaceFolder},target=/home/coder/workspace,type=bind,consistency=cached"
+  ],
+
+  // ── Port forwarding ───────────────────────────────────────────
+  "forwardPorts": [13337],
+  "portsAttributes": {
+    "13337": {
+      "label": "code-server",
+      "onAutoForward": "notify"
+    }
+  }
+}

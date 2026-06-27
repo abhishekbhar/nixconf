@@ -26,7 +26,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # ── 1. System + desktop + Chrome dependencies ──────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git xz-utils sudo bash \
+      ca-certificates curl git xz-utils sudo bash openssh-client docker.io \
+      nodejs npm \
       # Desktop environment (lightweight) — required by KasmVNC module
       xfce4 xfce4-terminal dbus xinit dbus-x11 \
       # Software GPU so native editors (Zed, etc.) can render
@@ -36,7 +37,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       wget xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# ── 2. Non-root user (UID 1000 matches main.tf) ───────────────────
+# ── 2. Docker Compose plugin ─────────────────────────────────────
+RUN mkdir -p /usr/local/lib/docker/cli-plugins \
+ && curl -fsSL https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64 \
+      -o /usr/local/lib/docker/cli-plugins/docker-compose \
+ && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
+ && ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+
+# ── 3. Non-root user (UID 1000 matches main.tf) ───────────────────
 RUN useradd --create-home --uid 1000 --shell /bin/bash coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
 
@@ -58,7 +66,10 @@ RUN curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_a
     && rm /tmp/chrome.deb \
     && rm -rf /var/lib/apt/lists/*
 
-# ── 5. Nix (single-user, flakes enabled) ──────────────────────────
+# ── 5. Pi coding agent (LLM-driven development assistant) ───────
+RUN npm install -g @earendil-works/pi-coding-agent
+
+# ── 6. Nix (single-user, flakes enabled) ──────────────────────────
 RUN mkdir -p /etc/nix \
  && printf 'experimental-features = nix-command flakes\n' > /etc/nix/nix.conf \
  && mkdir -m 0755 /nix && chown coder:coder /nix

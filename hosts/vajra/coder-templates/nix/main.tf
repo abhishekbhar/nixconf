@@ -38,6 +38,15 @@ data "coder_parameter" "memory_gb" {
   }
 }
 
+data "coder_parameter" "git_email" {
+  name         = "git_email"
+  display_name = "Git email for SSH key"
+  description  = "Email to embed in the generated SSH key. Leave blank to use your Coder account email."
+  type         = "string"
+  default      = data.coder_workspace_owner.me.email
+  mutable      = false
+}
+
 # ---------- agent ----------
 
 resource "coder_agent" "main" {
@@ -57,19 +66,47 @@ resource "coder_agent" "main" {
   startup_script_behavior = "blocking"
   startup_script          = <<-EOT
     set -e
-    mkdir -p /home/coder/workspace
+    mkdir -p /home/coder/workspace /home/coder/.ssh
 
-    # Git user config — VS Code Git extension needs this to avoid
-    # "Cannot read properties of undefined (reading 'some')" errors.
-    # Falls back to env vars (set by Coder from workspace owner) if
-    # local config was lost after container rebuild on persistent volume.
+    # ── Git user config ────────────────────────────────────────
     git config --global user.name  "${data.coder_workspace_owner.me.full_name}" 2>/dev/null || true
     git config --global user.email "${data.coder_workspace_owner.me.email}" 2>/dev/null || true
-    # SSH variant — Git defaults to 'simple' in bare environments, which breaks
-    # port-specified SSH URLs like ssh://git@host:2222/org/repo.git
     git config --global ssh.variant ssh 2>/dev/null || true
 
-    # code-server in the background; the coder_app block below proxies it.
+    # ── Pi coding agent PATH (for "pi" command) ────────────────
+    if [ -d "\$HOME/.local/node/bin" ]; then
+      export PATH="\$HOME/.local/node/bin:\$PATH"
+      export LD_LIBRARY_PATH="\$HOME/.local/node/lib"
+    fi
+
+    # ── SSH key (generate once, persists across restarts) ──────
+    SSH_EMAIL="${data.coder_parameter.git_email.value}"
+    if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+      ssh-keygen -t ed25519 -C "$SSH_EMAIL" -f "$HOME/.ssh/id_ed25519" -N "" >/dev/null 2>&1
+      echo "  ✓ SSH key generated for $SSH_EMAIL"
+    fi
+
+    # ── SSH config (stricthostkeychecking for git on first connect) ─
+    if [ ! -f "$HOME/.ssh/config" ]; then
+      cat > "$HOME/.ssh/config" << 'SSHEOF'
+Host git.abhibhr.in
+  HostName git.abhibhr.in
+  Port 2222
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+SSHEOF
+      chmod 600 "$HOME/.ssh/config"
+    fi
+
+    # ── code-server ────────────────────────────────────────────
     /usr/bin/code-server \
       --auth none \
       --bind-addr 0.0.0.0:13337 \
@@ -101,7 +138,7 @@ resource "coder_app" "code-server" {
   url          = "http://localhost:13337/?folder=/home/coder/workspace"
   icon         = "/icon/code.svg"
   subdomain    = false
-  share        = "owner"
+  share        = "authenticated"
   healthcheck {
     url       = "http://localhost:13337/healthz"
     interval  = 5
@@ -117,7 +154,7 @@ resource "coder_app" "frontend" {
   display_name = "Frontend (3000)"
   url          = "http://localhost:3000"
   subdomain    = false
-  share        = "owner"
+  share        = "authenticated"
 }
 
 # ---------- dedicated docker network ----------
@@ -169,6 +206,8 @@ resource "docker_container" "workspace" {
     "no-new-privileges:true",
   ]
 
+  group_add = [131]
+
   networks_advanced {
     name = data.docker_network.workspaces.name
   }
@@ -185,6 +224,12 @@ resource "docker_container" "workspace" {
   volumes {
     container_path = "/home/coder"
     volume_name    = docker_volume.home.name
+    read_only      = false
+  }
+
+  volumes {
+    container_path = "/var/run/docker.sock"
+    host_path      = "/var/run/docker.sock"
     read_only      = false
   }
 }

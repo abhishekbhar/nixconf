@@ -1,9 +1,10 @@
 # Coder - self-hosted remote dev environments
 # Coder server + Postgres via Docker Compose, managed by a systemd service.
 # State lives on /mnt/storage (2TB SSD).
-# Public entry: https://coder.abhibhr.in (and wildcard *.coder.abhibhr.in for the
-# in-workspace app proxy) is terminated at Cloudflare, tunneled to server2
-# (192.168.11.102), and reverse-proxied by nginx there to vajra:7080.
+# Public entry: https://coder.abhibhr.in. Workspace apps and port forwarding
+# use path-based URLs (subdomain=false) since Cloudflare Free can't serve
+# wildcard edge certs for *.coder.abhibhr.in.
+# Traffic: Browser -> Cloudflare -> server2 NPM (192.168.11.102) -> vajra:7080.
 { pkgs, ... }:
 let
   composeFile = pkgs.writeText "docker-compose-coder.yml" ''
@@ -37,8 +38,10 @@ let
           CODER_PG_CONNECTION_URL: "postgres://coder:coder@db:5432/coder?sslmode=disable"
           CODER_HTTP_ADDRESS: "0.0.0.0:7080"
           CODER_ACCESS_URL: "https://coder.abhibhr.in"
-          CODER_WILDCARD_ACCESS_URL: "*.coder.abhibhr.in"
-          CODER_DISABLE_PORT_FORWARD: "true"
+          # CODER_WILDCARD_ACCESS_URL intentionally NOT set — Cloudflare Free
+          # can't serve wildcard edge certs for *.coder.abhibhr.in, so we use
+          # path-based URLs for all workspace apps and port forwarding.
+          CODER_DISABLE_PORT_FORWARD: "false"
           # No direct laptop<->workspace tunneling; all traffic via Coder server.
           # Necessary for the egress firewall to have any meaning.
           CODER_DISABLE_DIRECT_CONNECTIONS: "true"
@@ -46,6 +49,9 @@ let
           CODER_PROXY_TRUSTED_ORIGINS: "192.168.11.102/32,100.87.43.112/32"
           CODER_TELEMETRY: "false"
           CODER_BLOCK_FILEDL: "true"
+          # Allow path-based apps (subdomain=false) to use sharing_level
+          # other than "owner" (e.g. "authenticated" for team workspaces).
+          CODER_DANGEROUS_ALLOW_PATH_APP_SHARING: "true"
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
           - /mnt/storage/coder/data:/home/coder/.config/coderv2

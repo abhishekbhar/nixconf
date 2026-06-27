@@ -16,7 +16,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Minimal host tooling. xz-utils + curl are required by the Nix installer.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git xz-utils sudo bash \
+      ca-certificates curl git xz-utils sudo bash openssh-client docker.io \
+      nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user matching the container UID/GID enforced by main.tf.
@@ -29,9 +30,21 @@ RUN mkdir -p /etc/nix \
 # Pre-create the Nix store owned by coder so the single-user installer needs no sudo.
 RUN mkdir -m 0755 /nix && chown coder:coder /nix
 
+# Docker Compose plugin (for "docker compose" command).
+# The Debian docker.io package does not ship the compose plugin.
+RUN mkdir -p /usr/local/lib/docker/cli-plugins \
+ && curl -fsSL https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64 \
+      -o /usr/local/lib/docker/cli-plugins/docker-compose \
+ && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
+ && ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+
 # Code-server installs as root to /usr/bin/code-server (main.tf startup_script
 # calls that exact path).
 RUN curl -fsSL https://code-server.dev/install.sh | sh
+
+# Pi coding agent (LLM-driven development assistant). Installed globally
+# via npm so every workspace user has it on PATH.
+RUN npm install -g @earendil-works/pi-coding-agent
 
 # Pre-create coder's xdg directories owned by coder.
 # Some Debian postinst scripts create /home/coder/.cache as root,
