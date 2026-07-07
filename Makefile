@@ -89,10 +89,21 @@ help:
 	@echo "    vajra-system - Build NixOS system only for vajra"
 	@echo "    vajra-home   - Build Home Manager only for vajra"
 	@echo ""
+	@echo "  Dev containers:"
+	@echo "    devbox-up DEV=<n>    - Start dev container for <n>"
+	@echo "    devbox-down DEV=<n>  - Stop dev container for <n>"
+	@echo "    devbox-shell DEV=<n> - Shell into <n>'s container"
+	@echo "    devbox-logs DEV=<n>  - Follow <n>'s container logs"
+	@echo "    devbox-rebuild DEV=<n> - Build & restart <n>'s container"
+	@echo "    devbox-add DEV=<n>   - Create .env.<n> from template"
+	@echo "    devbox-build DEV=<n> - Build image only"
+	@echo ""
 	@echo "  Utilities:"
 	@echo "    update       - Update flake inputs"
 	@echo "    gc           - Run garbage collection"
 	@echo "    check        - Check flake configuration"
 	@echo "    clean        - Remove build artifacts"
 
-.PHONY: mini wsl wsl-home wsl-system vajra vajra-home vajra-system update gc check clean help
+.PHONY: mini wsl wsl-home wsl-system vajra vajra-home vajra-system \
+        devbox devbox-build devbox-up devbox-down devbox-logs devbox-shell \
+        devbox-rebuild devbox-add update gc check clean help

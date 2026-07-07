@@ -11,8 +11,8 @@
     ./hardware-configuration.nix
     ./virtualisation.nix
     #    ./paperclip.nix
-    ./coder.nix
-    # ./coder-egress.nix   # enable once ready to restrict egress
+    # ./coder.nix                # REMOVED: Coder replaced by dev containers
+    # ./coder-egress.nix
     ../../modules/nixos/tailscale.nix
   ];
 
@@ -86,13 +86,8 @@
       2828
       8384
     ];
-    # Coder (7080): only reachable from server2 (LAN + Tailscale v4/v6).
-    # nginx on server2 fronts coder.abhibhr.in and *.coder.abhibhr.in.
-    firewall.extraCommands = ''
-      iptables  -I nixos-fw -p tcp -s 192.168.11.102           --dport 7080 -j nixos-fw-accept
-      iptables  -I nixos-fw -p tcp -s 100.87.43.112            --dport 7080 -j nixos-fw-accept
-      ip6tables -I nixos-fw -p tcp -s fd7a:115c:a1e0::8932:2b70 --dport 7080 -j nixos-fw-accept
-    '';
+    # Coder (7080) firewall rules removed — Coder server decommissioned.
+    # See git history or coder.nix in /hosts/vajra/ for original rules.
   };
 
   # Boot loader - adjust for your system

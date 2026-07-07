@@ -1,18 +1,21 @@
 # ─────────────────────────────────────────────────────────────────────
 # Dev container image (no Tailscale — handled by sidecar)
 # ─────────────────────────────────────────────────────────────────────
-# Runs in the tailscale sidecar's network namespace. sshd and
-# code-server are reachable via the tailnet IP.
+# Runs in the tailscale sidecar's network namespace. Developers
+# connect via VS Code Remote SSH or the code-server browser IDE.
+# SSH uses password auth (DEV_PASSWORD env var).
 #
 # Features:
 #   * Debian bookworm-slim base
-#   * Single-user Nix with flakes + direnv + nix-direnv
 #   * code-server (browser IDE on port 13337)
+#   * Single-user Nix with flakes + direnv + nix-direnv
 #   * Pi coding agent
-#   * OpenSSH server (key auth; add your public key in .env)
+#   * OpenSSH server (password auth via DEV_PASSWORD in .env)
 #   * Docker-outside-of-Docker (mount /var/run/docker.sock)
-#   * SSH key management via SSH_PUBLIC_KEYS env var
 #   * Git identity per developer
+#   * SSH key auto-generated for Git host access
+#   * User auto-renamed from coder → \$DEV_USER at startup
+#   * Entrypoint at /opt/devbox/entrypoint.sh (outside volume mounts)
 # ─────────────────────────────────────────────────────────────────────
 
 FROM debian:bookworm-slim
@@ -24,9 +27,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HOME=/home/coder
 
 # ── 1. System base ─────────────────────────────────────────────────
+# Node.js 20 from NodeSource (apt only has Node 18, pi agent needs 20+)
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git xz-utils sudo bash openssh-server \
-      docker.io nodejs npm \
+      docker.io \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # ── 2. Non-root user (UID 1000) with passwordless sudo ────────────
@@ -46,7 +52,7 @@ RUN mkdir -p /usr/local/lib/docker/cli-plugins \
  && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
  && ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
 
-# ── 5. code-server (browser IDE) ───────────────────────────────────
+# ── 5. code-server (browser IDE) ──────────────────────────────────
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
 # ── 6. Pi coding agent ────────────────────────────────────────────
@@ -57,7 +63,9 @@ RUN mkdir -p /home/coder/.cache /home/coder/.local/share \
             /home/coder/workspace \
     && chown -R coder:coder /home/coder
 
-# ── 8. Configure sshd ─────────────────────────────────────────────
+# ── 8. Pre-configure sshd ────────────────────────────────────────
+# The entrypoint (runs as root) overrides these with password auth.
+# We just ensure the directory exists and the defaults are safe.
 RUN mkdir -p /run/sshd \
     && sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
     && sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
@@ -69,7 +77,7 @@ WORKDIR /home/coder
 # ── 9. Single-user Nix install (no daemon) ────────────────────────
 RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon --no-channel-add
 
-# ── 10. direnv + nix-direnv ──────────────────────────────────────
+# ── 10. direnv + nix-direnv ─────────────────────────────────────
 RUN . /home/coder/.nix-profile/etc/profile.d/nix.sh \
  && nix profile install nixpkgs#direnv nixpkgs#nix-direnv
 
@@ -87,8 +95,12 @@ RUN mkdir -p /home/coder/.config/direnv \
       >> /home/coder/.bashrc \
  && printf 'eval "$(direnv hook bash)"\n' >> /home/coder/.bashrc
 
-# ── 11. Entrypoint ────────────────────────────────────────────────
-COPY --chown=coder:coder scripts/entrypoint.sh /home/coder/entrypoint.sh
-RUN chmod +x /home/coder/entrypoint.sh
+# ── 11. Entrypoint — outside volume mounts ────────────────────────
+# Stored in /opt/devbox (NOT /home/coder) so Docker volumes mounted
+# at /home don't shadow the entrypoint after image rebuilds.
+# The compose file overrides the user to "root" so the first phase
+# of the entrypoint can manage users and start sshd.
+COPY --chown=coder:coder scripts/entrypoint.sh /opt/devbox/entrypoint.sh
+RUN chmod +x /opt/devbox/entrypoint.sh
 
-ENTRYPOINT ["/home/coder/entrypoint.sh"]
+ENTRYPOINT ["/opt/devbox/entrypoint.sh"]

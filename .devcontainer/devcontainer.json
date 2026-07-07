@@ -46,6 +46,7 @@
   ],
 
   // ── Port forwarding ───────────────────────────────────────────
+  // Forward code-server port for when Dev Containers is used locally.
   "forwardPorts": [13337],
   "portsAttributes": {
     "13337": {

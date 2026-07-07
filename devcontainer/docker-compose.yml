@@ -4,18 +4,19 @@
 # Architecture:
 #   tailscale sidecar ──shares network──> devbox container
 #
-# The sidecard joins your tailnet. The dev container shares its network
-# namespace, so sshd and code-server are reachable via the Tailscale IP.
-# No tailscale is installed in the dev container — cleaner separation.
+# The sidecar joins your tailnet. The dev container shares its network
+# namespace. Both sshd (port 22) and code-server (port 13337) are
+# reachable via the Tailscale IP. No tailscale installed in the dev
+# container.
 #
 # Multi-developer: each dev runs with a different project name:
 #   docker compose -f devcontainer/docker-compose.yml \
 #     --env-file .env.abhishek -p devbox-abhishek up -d
 #
 # Connect:
-#   ssh coder@devbox-abhishek          (MagicDNS)
+#   ssh coder@devbox-abhishek            (MagicDNS)
 #   ssh coder@$(tailscale ip -4 devbox-abhishek)  (direct IP)
-#   http://<ts-ip>:13337               (code-server)
+#   http://<ts-ip>:13337                  (code-server browser IDE)
 # ─────────────────────────────────────────────────────────────────────
 
 services:
@@ -46,9 +47,10 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      # Just check the daemon is running and authenticated.
-      # --peers=true would fail on a single-node tailnet with no peers.
-      test: ["CMD-SHELL", "test -S /var/run/tailscale/tailscaled.sock && tailscale status 2>/dev/null | head -1 | grep -qE '(connected|stopped)' || exit 1"]
+      # Check tailscale has a tailnet IP — `tailscale ip -4` fails
+      # (non-zero) if not authenticated yet.  The tailscale/tailscale
+      # image puts its socket at /tmp/tailscaled.sock, not /var/run/.
+      test: ["CMD-SHELL", "tailscale ip -4 >/dev/null 2>&1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -63,12 +65,16 @@ services:
   # ── Dev container ─────────────────────────────────────────────
   devbox:
     # Share the tailscale container's network namespace — the dev
-    # container's sshd and code-server are reachable via the tailnet IP
-    # without exposing any ports to the Docker bridge.
+    # container's sshd is reachable via the tailnet IP without
+    # exposing any ports to the Docker bridge.
     network_mode: "service:tailscale"
     depends_on:
       tailscale:
         condition: service_healthy
+
+    # Run as root so the entrypoint can manage users and start sshd
+    # (it drops privileges via su for user-level setup)
+    user: root
 
     build:
       context: .
@@ -77,9 +83,9 @@ services:
 
     environment:
       DEV_USER: ${DEV_USER}
+      DEV_PASSWORD: ${DEV_PASSWORD:-}
       GIT_USER_NAME: ${GIT_USER_NAME}
       GIT_USER_EMAIL: ${GIT_USER_EMAIL}
-      SSH_PUBLIC_KEYS: ${SSH_PUBLIC_KEYS:-}
 
     # ── Resource limits (per-developer) ──────────────────────────
     deploy:

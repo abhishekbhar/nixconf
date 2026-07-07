@@ -14,9 +14,9 @@ Your laptop ──tailscale──┼── devbox-abhishek project              
                          │   │ ts-abhishek    │  │ devbox-     │ │
                          │   │ (sidecar)      │  │ abhishek    │ │
                          │   │                │  │             │ │
-                         │   │ tailscale      │──│ sshd :22    │ │
-                         │   │ NET_ADMIN      │  │ code-srv    │ │
-                         │   │ /dev/net/tun   │  │ :13337      │ │
+                         │   │ tailscale      │──│ sshd :22      │ │
+                         │   │ NET_ADMIN      │  │ code-srv:13337│ │
+                         │   │ /dev/net/tun   │  │ Nix + tools   │ │
                          │   │                │  │ Nix + tools │ │
                          │   │ tsstate volume │  │ home volume │ │
                          │   └────────────────┘  └─────────────┘ │
@@ -71,8 +71,11 @@ Each developer runs their **own Compose project**. Project name
 | SSH key pair | They already have one (or generate: `ssh-keygen -t ed25519`) |
 | The dev container's public key | Admin adds it to Git hosts for repo access |
 
-That's it. **No Docker. No Nix. No code-server. No repo clone**
+That's it. **No Docker. No Nix. No repo clone**
 on their machine — they work entirely inside the container.
+
+If they only need a browser, they can open `http://<ts-ip>:13337`
+to get a VS Code-compatible IDE (code-server) — no SSH client needed.
 
 ### Onboarding a new developer (admin view)
 
@@ -182,7 +185,7 @@ Jane lands in `/home/coder/workspace/`. Everything is ready:
 
 - **Nix + flakes:** `nix develop` works, `nix build` works
 - **direnv:** auto-loads project `.envrc` on `cd`
-- **code-server:** open `http://100.x.x.x:13337` in a browser
+
 - **Docker:** can run containers (shares host Docker socket)
 - **Pi agent:** `pi` command for AI-assisted coding
 - **Git:** `git pull`, `git push` to Forgejo/GitHub (key is already registered)
@@ -196,11 +199,6 @@ git clone git@git.abhibhr.in:team/project.git
 cd project
 # direnv auto-loads the flake
 ```
-
-#### Browser IDE
-
-Jane opens `http://100.x.x.x:13337` in any browser — code-server
-gives her a full VS Code experience. No install needed.
 
 ---
 
@@ -314,8 +312,8 @@ ssh coder@<that-ip>
 # Or with MagicDNS:
 ssh coder@devbox-abhishek
 
-# Browser IDE:
-open http://<that-ip>:13337
+# VS Code Remote SSH:
+ssh coder@<that-ip>     # then File → Open Folder…
 ```
 
 ---
@@ -344,10 +342,23 @@ Host devbox-*
 
 Then it's just `ssh devbox-abhishek`.
 
-### Browser IDE
+### VS Code Remote SSH
 
-`http://<tailscale-ip>:13337` — code-server runs with `--auth none`
-(no password; it's on your private tailnet).
+From VS Code on your machine:
+1. Install the **Remote — SSH** extension
+2. `Cmd+Shift+P` → **Remote-SSH: Connect to Host…**
+3. Enter `ssh coder@devbox-<name>` (or use the tailnet IP)
+4. VS Code opens the container's filesystem — full IDE experience
+
+Add this to `~/.ssh/config` for one-click connect:
+
+```
+Host devbox-*
+  HostName devbox-*
+  User coder
+  StrictHostKeyChecking accept-new
+  IdentityFile ~/.ssh/id_ed25519
+```
 
 ### From the host (vajra)
 
@@ -426,7 +437,7 @@ make devbox-shell DEV=abhishek cat /home/coder/.ssh/id_ed25519.pub
 | **Tailscale** | Sidecar | Official image, kernel TUN, persistent state |
 | **Nix** | Dev | Single-user Nix with flakes |
 | **direnv** | Dev | Auto-load `.envrc` + `flake.nix` |
-| **code-server** | Dev | Browser IDE on port 13337 |
+| **VS Code Remote SSH** | Dev | Connect via `ssh coder@devbox-<name>` |
 | **Pi agent** | Dev | `pi` command for AI coding |
 | **Docker** | Dev | `/var/run/docker.sock` mounted (DooD) |
 | **SSH** | Dev | OpenSSH server, key-only auth |
@@ -527,12 +538,12 @@ done
 |--------|-------|---------------|
 | **Architecture** | Coder server + Postgres + per-workspace containers | Tailscale sidecar + dev container |
 | **Multi-developer** | Coder workspaces via dashboard | One compose project per dev |
-| **Access** | Browser → Cloudflare → NPM → Coder | Direct SSH over tailnet |
+| **Access** | Browser → Cloudflare → NPM → Coder | Direct SSH over tailnet, or browser IDE on :13337 |
 | **Auth** | Coder accounts + passwords | Tailnet auth + SSH keys |
 | **Tailscale** | Not used | Official sidecar, independently upgradeable |
 | **Security** | egress firewall on Docker bridge | Same + tailnet-only access |
 | **Starting a workspace** | Coder UI → button click | Container always-on (systemd) |
-| **Developer machine req** | Any browser | Tailscale + SSH client |
+| **Developer machine req** | Any browser | Tailscale + SSH client (or just a browser for code-server) |
 | **Complexity** | Server + DB + proxy + Terraform | Two containers, one compose file |
 
 ---
@@ -567,14 +578,6 @@ cat ~/.ssh/authorized_keys
 tailscale ip -4 devbox-abhishek
 # If nothing shows, the sidecar hasn't authenticated yet.
 # Check the auth key.
-```
-
-**Can't reach code-server:**
-```bash
-# Verify from vajra:
-make devbox-shell DEV=abhishek
-curl -s http://localhost:13337/healthz
-# If not running, check /tmp/code-server.log inside the container
 ```
 
 **Port conflict?** No host port mapping — all traffic goes through
