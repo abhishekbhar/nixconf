@@ -41,6 +41,8 @@ services:
       - tsstate:/var/lib/tailscale/state
       - /dev/net/tun:/dev/net/tun
 
+    ports:
+      - "41641:41641/udp"
     cap_add:
       - NET_ADMIN
 

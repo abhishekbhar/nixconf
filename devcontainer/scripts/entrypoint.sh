@@ -122,9 +122,16 @@ if [ "${1:-}" = "--user-setup" ]; then
 
   # Git SSH config
   if [ ! -f "$HOME/.ssh/config" ]; then
-    cat > "$HOME/.ssh/config" << 'SSHEOF'
+    # Determine Forgejo host: prefer Tailscale IP (works from any tailnet node)
+    FORGEJO_HOST="100.87.43.112"
+    # Try to resolve server2 via tailscale
+    TS_IP=$(tailscale ip -4 2>/dev/null | head -1 || echo "")
+    if [ -n "$TS_IP" ]; then
+      FORGEJO_HOST="100.87.43.112"
+    fi
+    cat > "$HOME/.ssh/config" << SSHEOF
 Host git.abhibhr.in
-  HostName git.abhibhr.in
+  HostName ${FORGEJO_HOST}
   Port 2222
   User git
   IdentityFile ~/.ssh/id_ed25519
@@ -138,7 +145,34 @@ Host github.com
   UserKnownHostsFile /dev/null
 SSHEOF
     chmod 600 "$HOME/.ssh/config"
-    echo "  ✓ SSH config created (git.abhibhr.in + github.com)"
+    echo "  ✓ SSH config created (Forgejo via Tailscale ${FORGEJO_HOST}:2222 + github.com)"
+  fi
+
+  # Fix Nix profile chain if broken (common after image save/load)
+  if [ -d /nix/store ]; then
+    UE=$(ls -d /nix/store/*-user-environment 2>/dev/null | head -1)
+    if [ -n "$UE" ] && [ ! "$(readlink -f "$HOME/.nix-profile" 2>/dev/null)" = "$UE" ]; then
+      mkdir -p "$HOME/.local/state/nix/profiles"
+      rm -f "$HOME/.nix-profile"
+      rm -rf "$HOME/.local/state/nix/profiles/profile-1-link"
+      rm -f "$HOME/.local/state/nix/profiles/profile"
+      ln -s "$UE" "$HOME/.local/state/nix/profiles/profile-1-link"
+      ln -s profile-1-link "$HOME/.local/state/nix/profiles/profile"
+      ln -s "$HOME/.local/state/nix/profiles/profile" "$HOME/.nix-profile"
+      echo "  ✓ Nix profile chain repaired"
+    fi
+  fi
+
+  # Install direnv + make via nix if missing
+  if command -v nix &>/dev/null; then
+    if ! command -v direnv &>/dev/null; then
+      echo "  → Installing direnv + nix-direnv..."
+      nix profile install --impure nixpkgs#direnv nixpkgs#nix-direnv 2>&1 && echo "  ✓ direnv installed"
+    fi
+    if ! command -v make &>/dev/null; then
+      echo "  → Installing make..."
+      nix profile install --impure nixpkgs#gnumake 2>&1 && echo "  ✓ make installed"
+    fi
   fi
 
   # code-server
